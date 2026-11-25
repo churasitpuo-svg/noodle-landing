@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>หม่ำเลย | บะหมี่กึ่งสำเร็จรูปส่งถึงบ้าน</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--yellow:#FFD23F;--red:#E63946;--ink:#1B1B3A;--paper:#FFFFFF;--soft:#FFF1B8}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;font-family:'Prompt',system-ui,sans-serif;color:var(--ink);background:var(--yellow);line-height:1.6}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
+.wrap{max-width:960px;margin:0 auto;padding:0 20px}
+header.hero{padding:56px 0 40px}
+.hero h1{font-size:clamp(44px,11vw,96px);line-height:1;margin:0 0 16px;font-weight:800;letter-spacing:-.02em}
+.hero p{font-size:20px;max-width:34ch;margin:0 0 28px}
+.btn{display:inline-block;background:var(--ink);color:#fff;border:0;border-radius:999px;padding:14px 28px;font:600 18px 'Prompt',sans-serif;text-decoration:none;cursor:pointer}
+.btn:hover{background:var(--red)}
+.btn.block{width:100%;border-radius:14px}
+section{padding:40px 0}
+h2{font-size:32px;margin:0 0 20px;font-weight:800}
+.products{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px}
+.card{background:var(--paper);border-radius:20px;overflow:hidden;border:3px solid var(--ink)}
+.card img{width:100%;display:block;aspect-ratio:1/1;object-fit:cover}
+.card .body{padding:18px}
+.card h3{margin:0 0 4px;font-size:22px}
+.sku{font-size:14px;opacity:.7;margin:0 0 8px}
+.price{font-size:26px;font-weight:800;color:var(--red);margin:0 0 12px}
+.qty{display:flex;align-items:center;gap:12px}
+.qty button{width:44px;height:44px;border-radius:50%;border:3px solid var(--ink);background:var(--soft);font-size:24px;font-weight:800;cursor:pointer}
+.qty output{min-width:32px;text-align:center;font-size:22px;font-weight:600}
+.order{background:var(--paper);border:3px solid var(--ink);border-radius:20px;padding:24px}
+label{display:block;font-weight:600;margin:14px 0 4px}
+input,textarea{width:100%;padding:12px;border:2px solid var(--ink);border-radius:10px;font:inherit;background:#fff}
+.summary{background:var(--soft);border-radius:12px;padding:14px 16px;margin:18px 0}
+.summary div{display:flex;justify-content:space-between}
+.total{font-weight:800;font-size:20px;border-top:2px dashed var(--ink);margin-top:8px;padding-top:8px}
+#msg{margin-top:14px;font-weight:600}
+footer{padding:28px 0 40px;font-size:14px}
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="wrap">
+    <h1>หม่ำเลย</h1>
+    <p>บะหมี่กึ่งสำเร็จรูปรสเด็ด แพ็คแน่น ส่งถึงหน้าบ้าน</p>
+    <a class="btn" href="#products">เลือกรสที่ชอบ</a>
+  </div>
+</header>
+
+<main>
+<section id="products">
+  <div class="wrap">
+    <h2>เมนูของเรา</h2>
+    <div class="products" id="list"></div>
+  </div>
+</section>
+
+<section id="order">
+  <div class="wrap">
+    <h2>สั่งซื้อ</h2>
+    <form class="order" id="form" novalidate>
+      <div class="summary" id="summary" aria-live="polite"></div>
+      <label for="name">ชื่อผู้รับ</label>
+      <input id="name" autocomplete="name" required>
+      <label for="phone">เบอร์โทร</label>
+      <input id="phone" type="tel" autocomplete="tel" required>
+      <label for="address">ที่อยู่จัดส่ง</label>
+      <textarea id="address" rows="3" autocomplete="street-address" required></textarea>
+      <div style="height:18px"></div>
+      <button class="btn block" type="submit" id="submit">ยืนยันสั่งซื้อ</button>
+      <p id="msg" role="status"></p>
+    </form>
+  </div>
+</section>
+</main>
+
+<footer><div class="wrap">หม่ำเลย &copy; 2569 งานในรายวิชา LSM21467</div></footer>
+
+<script>
+// 1) วาง URL ของ Apps Script (Web app) ตรงนี้ หลังจาก Deploy แล้ว
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx3o3WjjgTXSHR8IomIjSi944AfG0Dm46__TXfkf7o_vfdADKRQvK66wIOjX8yTxp6D/exec";
+
+// 2) รายการสินค้า (ต้องตรงกับแท็บ Products ใน Google Sheet)
+const PRODUCTS = [
+  {sku:"NOO-01", name:"บะหมี่รสต้มยำกุ้ง", price:6, img:"images/noo01.svg"},
+  {sku:"NOO-02", name:"บะหมี่รสหมูสับ",   price:6, img:"images/noo02.svg"}
+];
+
+const cart = {};
+PRODUCTS.forEach(p => cart[p.sku] = 0);
+
+const list = document.getElementById("list");
+list.innerHTML = PRODUCTS.map(p => `
+  <article class="card">
+    <img src="${p.img}" alt="${p.name}">
+    <div class="body">
+      <h3>${p.name}</h3>
+      <p class="sku">รหัสสินค้า ${p.sku}</p>
+      <p class="price">${p.price} บาท / ซอง</p>
+      <div class="qty">
+        <button type="button" data-sku="${p.sku}" data-d="-1" aria-label="ลดจำนวน ${p.name}">−</button>
+        <output id="q-${p.sku}">0</output>
+        <button type="button" data-sku="${p.sku}" data-d="1" aria-label="เพิ่มจำนวน ${p.name}">+</button>
+      </div>
+    </div>
+  </article>`).join("");
+
+list.addEventListener("click", e => {
+  const b = e.target.closest("button[data-sku]");
+  if (!b) return;
+  const s = b.dataset.sku;
+  cart[s] = Math.max(0, cart[s] + Number(b.dataset.d));
+  document.getElementById("q-" + s).textContent = cart[s];
+  render();
+});
+
+function render(){
+  let total = 0, rows = "";
+  PRODUCTS.forEach(p => {
+    if (cart[p.sku] > 0){
+      const sub = cart[p.sku] * p.price;
+      total += sub;
+      rows += `<div><span>${p.name} × ${cart[p.sku]}</span><span>${sub} บาท</span></div>`;
+    }
+  });
+  document.getElementById("summary").innerHTML =
+    (rows || "<div>ยังไม่ได้เลือกสินค้า</div>") +
+    `<div class="total"><span>รวม</span><span>${total} บาท</span></div>`;
+}
+render();
+
+document.getElementById("form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const msg = document.getElementById("msg");
+  const name = document.getElementById("name").value.trim();
+  const phone = document.getElementById("phone").value.trim();
+  const address = document.getElementById("address").value.trim();
+  const chosen = PRODUCTS.filter(p => cart[p.sku] > 0);
+
+  if (!chosen.length){ msg.textContent = "กรุณาเลือกสินค้าอย่างน้อย 1 รายการ"; return; }
+  if (!name || !phone || !address){ msg.textContent = "กรุณากรอกชื่อ เบอร์โทร และที่อยู่ให้ครบ"; return; }
+
+  const btn = document.getElementById("submit");
+  btn.disabled = true; msg.textContent = "กำลังส่งออเดอร์...";
+  try{
+    for (const p of chosen){
+      await fetch(SCRIPT_URL, {
+        method:"POST", mode:"no-cors",
+        headers:{"Content-Type":"text/plain;charset=utf-8"},
+        body: JSON.stringify({name, phone, address, sku:p.sku, qty:cart[p.sku], total:cart[p.sku]*p.price})
+      });
+    }
+    msg.textContent = "สั่งซื้อเรียบร้อย ขอบคุณค่ะ";
+    PRODUCTS.forEach(p => { cart[p.sku] = 0; document.getElementById("q-"+p.sku).textContent = 0; });
+    e.target.reset(); render();
+  }catch(err){
+    msg.textContent = "ส่งออเดอร์ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง";
+  }
+  btn.disabled = false;
+});
+</script>
+</body>
+</html>
